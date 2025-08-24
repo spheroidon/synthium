@@ -28,6 +28,7 @@
         flex-direction: column;
         align-items: center;
         text-align: center;
+        margin-bottom: 5%;
     }
 
     #label * {
@@ -92,7 +93,7 @@
     let frequencyLabel = document.getElementById('frequency');
     let volumeLabel = document.getElementById('volume');
 
-    let padHeight, padWidth = 0;
+    let padHeight = 0, padWidth = 0;
 
     function updatePadSize() {
         padHeight = pad.offsetHeight;
@@ -150,35 +151,35 @@
         } else if (normX <= extreme2) {
             frequency = mapRange(normX, extreme1, extreme2, 35, 80);
         } else if (normX <= extreme3) {
-            frequency = mapRange(normX, extreme2, extreme3, 80, 150);
+            frequency = mapRange(normX, extreme2, extreme3, 80, 160);
         } else if (normX <= 1 - extreme3) {
-            frequency = mapRange(normX, extreme3, 1 - extreme3, 150, 1100);
+            frequency = mapRange(normX, extreme3, 1 - extreme3, 160, 900);
         } else if (normX <= 1 - extreme2) {
-            frequency = mapRange(normX, 1 - extreme3, 1 - extreme2, 1100, 1500);
+            frequency = mapRange(normX, 1 - extreme3, 1 - extreme2, 900, 1200);
         } else if (normX <= 1 - extreme1) {
-            frequency = mapRange(normX, 1 - extreme2, 1 - extreme1, 1500, 2000);
+            frequency = mapRange(normX, 1 - extreme2, 1 - extreme1, 1200, 1800);
         } else {
-            frequency = mapRange(normX, 1 - extreme1, 1, 2000, 2500);
+            frequency = mapRange(normX, 1 - extreme1, 1, 1800, 2400);
         }
 
         let volume;
         if (normY <= 0.15) {
-            volume = mapRange(normY, 0, 0.20, -60, -10);
+            volume = mapRange(normY, 0, 0.15, -60, -10);
         } else if (normY <= 0.9) {
-            volume = mapRange(normY, 0.20, 0.85, -10, 10);
+            volume = mapRange(normY, 0.15, 0.9, -10, 10);
         } else {
-            volume = mapRange(normY, 0.85, 1, 10, 20);
+            volume = mapRange(normY, 0.9, 1, 10, 20);
         }
 
         if (frequency <= 200) {
             let boost;
             if (frequency <= 60) {
-                boost = mapRange(frequency, 20, 45, 15, 10);
+                boost = mapRange(frequency, 20, 45, 25, 15);
             } else {
-                boost = mapRange(frequency, 45, 150, 10, 0);
+                boost = mapRange(frequency, 45, 150, 15, 0);
             }
             volume += boost;
-            volume = Math.min(volume, 25);
+            volume = Math.min(volume, 35);
         }
 
         return { frequency: frequency, volume: volume };
@@ -191,7 +192,7 @@
         frequencyLabel.innerText = text;
     }
 
-    function updateVolumeLabel(text = "") {
+    function updateVolumeLabel(text = "0dB") {
         volumeLabel.innerText = text;
     }
 
@@ -205,6 +206,10 @@
         const values = calculateSynth(x, y)
         updateFrequencyLabel(Math.round(values.frequency) + "Hz");
         updateVolumeLabel(Math.round(values.volume) + "dB");
+        if(x == 0 && y == 0) {
+            updateFrequencyLabel();
+            updateVolumeLabel();
+        }
         updateColors(x, y);
     }
 
@@ -268,7 +273,7 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.key === ' ') {
-            if(dragging) {
+            if (dragging || !initialized) {
                 return
             }
 
@@ -291,6 +296,10 @@
 
     document.addEventListener('keyup', (e) => {
         if (e.code === 'Space' || e.key === ' ') {
+            if (!dragging || !initialized) {
+                return
+            }
+
             const pointerEvent = new PointerEvent('pointerup', {
                 bubbles: true,
                 cancelable: true,
