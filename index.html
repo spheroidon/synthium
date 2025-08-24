@@ -7,6 +7,92 @@
 </head>
 
 <style>
+    /********** Universal Checkbox Styles **********/
+    input[type="checkbox"] {
+        /* Reset default checkbox appearance */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 2px solid hsl(0, 0%, 75%);
+        border-radius: 0.25rem;
+        background-color: hsl(0, 0%, 100%);
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    /* Hover effect */
+    input[type="checkbox"]:hover {
+        border-color: hsl(0, 0%, 50%);
+    }
+
+    /* Checked state */
+    input[type="checkbox"]:checked {
+        background-color: hsl(0, 0%, 40%);
+        border-color: hsl(0, 0%, 40%);
+    }
+
+    /* Focus state */
+    input[type="checkbox"]:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px hsl(0, 0%, 20%);
+    }
+
+    /* Checkmark */
+    input[type="checkbox"]:checked::after {
+        content: '';
+        position: absolute;
+        left: 0.4rem;
+        top: 0.1rem;
+        width: 0.35rem;
+        height: 0.7rem;
+        border: solid hsl(0, 0%, 100%);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+</style>
+
+<style>
+    /********** Universal Number Input Styles (Static) **********/
+    input[type="number"] {
+        -webkit-appearance: none;
+        -moz-appearance: textfield;
+        /* Firefox default */
+        appearance: none;
+
+        width: 6rem;
+        padding: 0.25rem 0.5rem;
+        border: 2px solid hsl(0, 0%, 75%);
+        border-radius: 0.25rem;
+        background-color: hsl(0, 0%, 100%);
+        color: hsl(0, 0%, 20%);
+        font-size: 1rem;
+        cursor: text;
+    }
+
+    /* Remove arrows in Chrome, Safari, Edge */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* Remove arrows in Firefox */
+    input[type="number"] {
+        -moz-appearance: textfield;
+    }
+
+    /* Optional: active state mimic slider thumb */
+    input[type="number"]:active {
+        border-color: hsl(0, 0%, 40%);
+        background-color: hsl(0, 0%, 95%);
+    }
+</style>
+
+
+<style>
     /********** Range Input Styles **********/
     /*Range Reset*/
     input[type="range"] {
@@ -164,6 +250,11 @@
     <div id="controls">
         <label for="distortion">Distortion: </label>
         <input type="range" min="0" max="7" step="1" value="1" id="distortion">
+        <label for="reverb">Reverb: </label>
+        <input type="checkbox" value="false" id="reverb">
+        <label for="attack">Attack/Release: </label>
+        <input type="number" id="attack" min="0" max="10" step="0.05" value="0.15">
+        <input type="number" id="release" min="0" max="10" step="0.05" value="0.5">
     </div>
 </body>
 
@@ -185,21 +276,32 @@
 
     Tone.start();
 
-    const synth = new Tone.Synth();
+    const synth = new Tone.Synth({
+        envelope: {
+            attack: 0.15,
+            sustain: 1,
+            release: 0.5
+        }
+    });
     const volume = new Tone.Volume(-12);
     // const filter = new Tone.Filter(4000, "lowpass");
+    const reverb = new Tone.Reverb();
+    reverb.wet.value = 0;
     const distortion = new Tone.Distortion(0);
 
     synth.connect(volume);
-    volume.connect(distortion);
-    // filter.connect(distortion);
+    volume.connect(reverb);
+    reverb.connect(distortion);
     distortion.toDestination();
 
     const distortionLevels = [0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1];
     let distortionLevel = 0;
 
     let controls = document.getElementById('controls');
-    let distortionInput = document.getElementById('distortion')
+    let distortionInput = document.getElementById('distortion');
+    let reverbInput = document.getElementById('reverb');
+    let attackInput = document.getElementById('attack');
+    let releaseInput = document.getElementById('release');
 
     distortionLevel = distortionLevels[distortionInput.value];
 
@@ -396,6 +498,19 @@
         distortionInput.value = distortionLevel
     }
 
+    function updateReverb() {
+        reverb.wet.value = reverbInput.checked ? 0.5 : 0
+    }
+
+    function updateAttack() {
+        synth.envelope.attack = attackInput.valueAsNumber;
+        synth.envelope.sustain = Math.max(10, attackInput.valueAsNumber);
+    }
+
+    function updateRelease() {
+        synth.envelope.release = releaseInput.valueAsNumber;
+    }
+
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.key === ' ') {
             if (dragging || !initialized) {
@@ -417,9 +532,12 @@
 
             pad.dispatchEvent(pointerEvent);
         } else if (e.key === 'q') {
-            updateDistortionLevel(parseInt(distortionInput.value,10)+1)
+            updateDistortionLevel(parseInt(distortionInput.value, 10) + 1)
         } else if (e.key === 'a') {
-            updateDistortionLevel(parseInt(distortionInput.value,10)-1)
+            updateDistortionLevel(parseInt(distortionInput.value, 10) - 1)
+        } else if (e.key === 'r') {
+            reverbInput.checked = !reverbInput.checked;
+            updateReverb();
         }
     });
 
@@ -446,23 +564,43 @@
         }
     });
 
-    pad.addEventListener('pointerdown', down);
-    pad.addEventListener('pointermove', move);
-    pad.addEventListener('pointerup', up);
 
-    distortionInput.addEventListener("input", function () {
-        inp = parseInt(distortionInput.value, 10);
-        updateDistortionLevel(inp);
-    })
 
     document.addEventListener('DOMContentLoaded', () => {
         updateDisplay(0, 0);
         updatePadSize();
+
+        pad.addEventListener('pointerdown', down);
+        pad.addEventListener('pointermove', move);
+        pad.addEventListener('pointerup', up);
+
+        distortionInput.addEventListener('input', function () {
+            inp = parseInt(distortionInput.value, 10);
+            updateDistortionLevel(inp);
+        });
+
+        reverbInput.addEventListener('change', function (event) {
+            updateReverb();
+        });
+
+        attackInput.addEventListener('change', function (event) {
+            updateAttack();
+        });
+        attackInput.addEventListener('input', function (event) {
+            updateAttack();
+        });
+
+        releaseInput.addEventListener('change', function (event) {
+            updateRelease();
+        });
+        releaseInput.addEventListener('input', function (event) {
+            updateRelease();
+        });
     });
 
     window.addEventListener("resize", (event) => {
         updatePadSize();
-    })
+    });
 </script>
 
 </html>
