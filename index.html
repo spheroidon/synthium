@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Synthium</title>
+</head>
+
+<style>
+    #pad {
+        position: absolute;
+
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+
+        background: black;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #status {
+        color: hsl(0, 0%, 70%, 60%);
+        font-size: 6vmin;
+        font-family: Arial, Helvetica, sans-serif;
+        font-weight: bolder;
+        user-select: none;
+    }
+
+    #label.dragging #status {
+        color: hsl(0, 0%, 99%, 100%);
+    }
+</style>
+
+<body>
+    <div id="pad">
+        <div id="label">
+            <span id="status"></span>
+        </div>
+    </div>
+</body>
+
+<script src="http://unpkg.com/tone"></script>
+
+<script>
+    let dragging = false;
+
+    Tone.start();
+    const synth = new Tone.Synth().toDestination()
+
+    let pad = document.getElementById('pad');
+    let label = document.getElementById('label');
+    let status = document.getElementById('status');
+
+    function updateStatus(text = "CLICK / DRAG") {
+        status.innerText = text;
+    }
+
+    function setDragging(value) {
+        dragging = value;
+        if (dragging) {
+            label.classList.add('dragging');
+        } else {
+            label.classList.remove('dragging');
+        }
+    }
+
+    function down(event) {
+        setDragging(true);
+
+        let x = event.pageX;
+
+        updateStatus(Math.round(x) + 'Hz')
+
+        synth.triggerAttack(x);
+    }
+
+    function move(event) {
+        let x = event.pageX;
+
+        updateStatus(Math.round(x) + 'Hz')
+
+        synth.setNote(x);
+    }
+
+    function up(event) {
+        setDragging(false);
+
+        updateStatus();
+
+        synth.triggerRelease();
+    }
+
+    pad.addEventListener('pointerdown', down);
+    pad.addEventListener('pointermove', move);
+    pad.addEventListener('pointerup', up);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateStatus();
+    });
+</script>
+
+</html>
