@@ -22,12 +22,30 @@
         align-items: center;
     }
 
-    #frequency {
+    #label {
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    #label * {
         color: hsl(0, 0%, 70%, 60%);
         font-size: 6vmin;
         font-family: Arial, Helvetica, sans-serif;
-        font-weight: bolder;
+        font-weight: 700;
         user-select: none;
+    }
+
+    #frequency {
+        font-size: 12vmin;
+        font-weight: 800;
+    }
+
+    #volume {
+        font-size: 8vmin;
+        font-weight: 700;
     }
 </style>
 
@@ -35,6 +53,8 @@
     <div id="pad">
         <div id="label">
             <span id="frequency"></span>
+            <br>
+            <span id="volume"></span>
         </div>
     </div>
 </body>
@@ -42,20 +62,47 @@
 <script src="http://unpkg.com/tone"></script>
 
 <script>
+    function mapRange(value, inputMin, inputMax, outputMin, outputMax) {
+        return ((value - inputMin) / (inputMax - inputMin)) * (outputMax - outputMin) + outputMin;
+    }
+</script>
+
+<script>
     let initialized = false;
     let dragging = false;
 
+    let lastX = 0;
+    let lastY = 0;
+
+
     Tone.start();
-    const synth = new Tone.Synth().toDestination();
+
+    const synth = new Tone.Synth();
+    const volume = new Tone.Volume(-12);
+    // const filter = new Tone.Filter(4000, "lowpass");
+    const distortion = new Tone.Distortion(0);
+
+    synth.connect(volume);
+    volume.connect(distortion);
+    // filter.connect(distortion);
+    distortion.toDestination();
 
     let pad = document.getElementById('pad');
     let label = document.getElementById('label');
-    let frequency = document.getElementById('frequency');
+    let frequencyLabel = document.getElementById('frequency');
+    let volumeLabel = document.getElementById('volume');
+
+    let padHeight, padWidth = 0;
+
+    function updatePadSize() {
+        padHeight = pad.offsetHeight;
+        padWidth = pad.offsetWidth
+    }
 
     function getBackgroundColor(x) {
         let hue, saturation, lightness;
 
-        if(dragging) {
+        if (dragging) {
             hue = Math.round((x / window.innerWidth) * 360);
             saturation = 85;
             lightness = 50;
@@ -64,14 +111,14 @@
             saturation = 10;
             lightness = 30;
         }
-        
+
         return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     }
 
     function getLabelColor(x) {
         let hue, saturation, lightness;
 
-        if(dragging) {
+        if (dragging) {
             hue = Math.round(((x / window.innerWidth) * 360) + 180);
             saturation = 100;
             lightness = 50;
@@ -86,18 +133,79 @@
         return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     }
 
-    function updateFrequency(text = "CLICK / DRAG") {
-        frequency.innerText = text;
+    function calculateSynth(x, y) {
+        const isVertical = padHeight > padWidth;
+
+        let normX = Math.min(Math.max(x / padWidth, 0), 1);
+        let normY = Math.min(Math.max((padHeight - y) / padHeight, 0), 1);
+
+        let extreme1 = isVertical ? 0.05 : 0.04;
+        let extreme2 = extreme1 * 2;
+        let extreme3 = extreme2 * 2;
+
+        let frequency;
+
+        if (normX <= extreme1) {
+            frequency = mapRange(normX, 0, extreme1, 20, 35);
+        } else if (normX <= extreme2) {
+            frequency = mapRange(normX, extreme1, extreme2, 35, 80);
+        } else if (normX <= extreme3) {
+            frequency = mapRange(normX, extreme2, extreme3, 80, 150);
+        } else if (normX <= 1 - extreme3) {
+            frequency = mapRange(normX, extreme3, 1 - extreme3, 150, 1100);
+        } else if (normX <= 1 - extreme2) {
+            frequency = mapRange(normX, 1 - extreme3, 1 - extreme2, 1100, 1500);
+        } else if (normX <= 1 - extreme1) {
+            frequency = mapRange(normX, 1 - extreme2, 1 - extreme1, 1500, 2000);
+        } else {
+            frequency = mapRange(normX, 1 - extreme1, 1, 2000, 2500);
+        }
+
+        let volume;
+        if (normY <= 0.15) {
+            volume = mapRange(normY, 0, 0.20, -60, -10);
+        } else if (normY <= 0.9) {
+            volume = mapRange(normY, 0.20, 0.85, -10, 10);
+        } else {
+            volume = mapRange(normY, 0.85, 1, 10, 20);
+        }
+
+        if (frequency <= 200) {
+            let boost;
+            if (frequency <= 60) {
+                boost = mapRange(frequency, 20, 45, 15, 10);
+            } else {
+                boost = mapRange(frequency, 45, 150, 10, 0);
+            }
+            volume += boost;
+            volume = Math.min(volume, 25);
+        }
+
+        return { frequency: frequency, volume: volume };
     }
 
-    function updateColors(x) {
+
+
+
+    function updateFrequencyLabel(text = "CLICK / DRAG") {
+        frequencyLabel.innerText = text;
+    }
+
+    function updateVolumeLabel(text = "") {
+        volumeLabel.innerText = text;
+    }
+
+    function updateColors(x, y) {
         pad.style.backgroundColor = getBackgroundColor(x);
-        frequency.style.color = getLabelColor(x);
+        frequencyLabel.style.color = getLabelColor(x);
+        volumeLabel.style.color = getLabelColor(x)
     }
 
-    function updateDisplay(x) {
-        updateFrequency(Math.round(x) + 'Hz');
-        updateColors(x);
+    function updateDisplay(x, y) {
+        const values = calculateSynth(x, y)
+        updateFrequencyLabel(Math.round(values.frequency) + "Hz");
+        updateVolumeLabel(Math.round(values.volume) + "dB");
+        updateColors(x, y);
     }
 
     function setDragging(value) {
@@ -118,40 +226,95 @@
         setDragging(true);
 
         let x = event.pageX;
+        let y = event.pageY;
 
-        updateDisplay(x);
+        updateDisplay(x, y);
 
-        synth.triggerAttack(x);
+        const values = calculateSynth(x, y);
+
+        synth.triggerAttack(values.frequency);
+        volume.volume.value = values.volume;
     }
 
     function move(event) {
+        let x = event.pageX;
+        let y = event.pageY;
+
+        lastX = x;
+        lastY = y;
+
         if (!initialized) {
             return;
         }
 
-        let x = event.pageX;
+        updateDisplay(x, y);
 
-        updateDisplay(x);
+        const values = calculateSynth(x, y);
 
-        synth.setNote(x);
+        synth.setNote(values.frequency);
+        volume.volume.value = values.volume;
     }
 
     function up(event) {
         setDragging(false);
 
         let x = event.pageX;
+        let y = event.pageY;
 
-        updateDisplay(x);
+        updateDisplay(x, y);
 
         synth.triggerRelease();
     }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' || e.key === ' ') {
+            if(dragging) {
+                return
+            }
+
+            const pointerEvent = new PointerEvent('pointerdown', {
+                bubbles: true,
+                cancelable: true,
+                pointerId: 1,
+                pointerType: 'mouse',
+                isPrimary: true,
+                pageX: lastX,
+                pageY: lastY,
+                clientX: lastX,
+                clientY: lastY,
+                button: 0
+            });
+
+            pad.dispatchEvent(pointerEvent);
+        }
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.code === 'Space' || e.key === ' ') {
+            const pointerEvent = new PointerEvent('pointerup', {
+                bubbles: true,
+                cancelable: true,
+                pointerId: 1,
+                pointerType: 'mouse',
+                isPrimary: true,
+                pageX: lastX,
+                pageY: lastY,
+                clientX: lastX,
+                clientY: lastY,
+                button: 0
+            });
+
+            pad.dispatchEvent(pointerEvent);
+        }
+    });
 
     pad.addEventListener('pointerdown', down);
     pad.addEventListener('pointermove', move);
     pad.addEventListener('pointerup', up);
 
     document.addEventListener('DOMContentLoaded', () => {
-        updateDisplay(0);
+        updateDisplay(0, 0);
+        updatePadSize()
     });
 </script>
 
