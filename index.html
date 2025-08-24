@@ -22,7 +22,7 @@
         align-items: center;
     }
 
-    #status {
+    #frequency {
         color: hsl(0, 0%, 70%, 60%);
         font-size: 6vmin;
         font-family: Arial, Helvetica, sans-serif;
@@ -30,7 +30,7 @@
         user-select: none;
     }
 
-    #label.dragging #status {
+    #label.dragging #frequency {
         color: hsl(0, 0%, 99%, 100%);
     }
 </style>
@@ -38,7 +38,7 @@
 <body>
     <div id="pad">
         <div id="label">
-            <span id="status"></span>
+            <span id="frequency"></span>
         </div>
     </div>
 </body>
@@ -46,21 +46,27 @@
 <script src="http://unpkg.com/tone"></script>
 
 <script>
+    let initialized = false;
     let dragging = false;
 
     Tone.start();
-    const synth = new Tone.Synth().toDestination()
+    const synth = new Tone.Synth().toDestination();
 
     let pad = document.getElementById('pad');
     let label = document.getElementById('label');
-    let status = document.getElementById('status');
+    let frequency = document.getElementById('frequency');
 
-    function updateStatus(text = "CLICK / DRAG") {
-        status.innerText = text;
+    function updateFrequency(text = "CLICK / DRAG") {
+        frequency.innerText = text;
     }
 
     function setDragging(value) {
         dragging = value;
+
+        if (!initialized && dragging) {
+            initialized = true;
+        }
+
         if (dragging) {
             label.classList.add('dragging');
         } else {
@@ -73,23 +79,25 @@
 
         let x = event.pageX;
 
-        updateStatus(Math.round(x) + 'Hz')
+        updateFrequency(Math.round(x) + 'Hz');
 
         synth.triggerAttack(x);
     }
 
     function move(event) {
+        if (!initialized) {
+            return;
+        }
+
         let x = event.pageX;
 
-        updateStatus(Math.round(x) + 'Hz')
+        updateFrequency(Math.round(x) + 'Hz');
 
         synth.setNote(x);
     }
 
     function up(event) {
         setDragging(false);
-
-        updateStatus();
 
         synth.triggerRelease();
     }
@@ -99,7 +107,7 @@
     pad.addEventListener('pointerup', up);
 
     document.addEventListener('DOMContentLoaded', () => {
-        updateStatus();
+        updateFrequency();
     });
 </script>
 
