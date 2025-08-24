@@ -29,10 +29,6 @@
         font-weight: bolder;
         user-select: none;
     }
-
-    #label.dragging #frequency {
-        color: hsl(0, 0%, 99%, 100%);
-    }
 </style>
 
 <body>
@@ -56,8 +52,52 @@
     let label = document.getElementById('label');
     let frequency = document.getElementById('frequency');
 
+    function getBackgroundColor(x) {
+        let hue, saturation, lightness;
+
+        if(dragging) {
+            hue = Math.round((x / window.innerWidth) * 360);
+            saturation = 85;
+            lightness = 50;
+        } else {
+            hue = Math.round(((x / window.innerWidth) * 360) + 180);
+            saturation = 10;
+            lightness = 30;
+        }
+        
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
+    function getLabelColor(x) {
+        let hue, saturation, lightness;
+
+        if(dragging) {
+            hue = Math.round(((x / window.innerWidth) * 360) + 180);
+            saturation = 100;
+            lightness = 50;
+
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        } else {
+            hue = Math.round((x / window.innerWidth) * 360);
+            saturation = 10;
+            lightness = 70;
+        }
+
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
     function updateFrequency(text = "CLICK / DRAG") {
         frequency.innerText = text;
+    }
+
+    function updateColors(x) {
+        pad.style.backgroundColor = getBackgroundColor(x);
+        frequency.style.color = getLabelColor(x);
+    }
+
+    function updateDisplay(x) {
+        updateFrequency(Math.round(x) + 'Hz');
+        updateColors(x);
     }
 
     function setDragging(value) {
@@ -79,7 +119,7 @@
 
         let x = event.pageX;
 
-        updateFrequency(Math.round(x) + 'Hz');
+        updateDisplay(x);
 
         synth.triggerAttack(x);
     }
@@ -91,13 +131,17 @@
 
         let x = event.pageX;
 
-        updateFrequency(Math.round(x) + 'Hz');
+        updateDisplay(x);
 
         synth.setNote(x);
     }
 
     function up(event) {
         setDragging(false);
+
+        let x = event.pageX;
+
+        updateDisplay(x);
 
         synth.triggerRelease();
     }
@@ -107,7 +151,7 @@
     pad.addEventListener('pointerup', up);
 
     document.addEventListener('DOMContentLoaded', () => {
-        updateFrequency();
+        updateDisplay(0);
     });
 </script>
 
