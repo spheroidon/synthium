@@ -2,4 +2,4 @@
 
 ## Includes extra features such as an effects panel, volume control, and more!
 
-DISCLAIMER: I used AI for CSS inputs, helper functions, and math.
+DISCLAIMER: I used AI for some CSS inputs, helper functions, and math.
